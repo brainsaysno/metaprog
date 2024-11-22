@@ -1,6 +1,6 @@
 {
   "name": "metaprog",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "An experimental versatile meta-programming AI library.",
   "scripts": {
     "build": "tsc",
