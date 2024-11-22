@@ -1,0 +1,25 @@
+{
+  "name": "metaprog",
+  "version": "1.0.0",
+  "description": "An experimental versatile meta-programming AI library.",
+  "scripts": {
+    "build": "tsc",
+    "ci": "npm run build",
+    "format": "prettier --write ."
+  },
+  "keywords": [
+    "AI",
+    "meta-programming",
+    "GPT"
+  ],
+  "author": "Nicolás Russo <nrusso@nrusso.dev>",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3"
+  }
+}
