@@ -1,7 +1,7 @@
 {
   "name": "metaprog",
   "version": "1.0.1",
-  "description": "An experimental versatile meta-programming AI library.",
+  "description": "An experimental and versatile library for exploring LLM-assisted metaprogramming.",
   "scripts": {
     "build": "tsc",
     "ci": "pnpm run build && pnpm run check-format && pnpm run check-exports && pnpm run test",
@@ -14,9 +14,12 @@
     "prepublishOnly": "pnpm run ci"
   },
   "keywords": [
-    "AI",
-    "meta-programming",
-    "GPT"
+    "metaprogramming",
+    "ai",
+    "llm",
+    "gpt",
+    "claude",
+    "prompt engineering"
   ],
   "author": "Nicolás Russo <nrusso@nrusso.dev>",
   "license": "MIT",
@@ -24,10 +27,10 @@
     "dist"
   ],
   "type": "module",
-  "main": "dist/index.js",
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.17.0",
     "@changesets/cli": "^2.27.10",
+    "dotenv": "^16.4.7",
     "prettier": "^3.3.3",
     "typescript": "^5.6.3",
     "vitest": "^2.1.5"
@@ -36,7 +39,9 @@
     "@langchain/anthropic": "^0.3.8",
     "@langchain/core": "^0.3.18",
     "@langchain/ollama": "^0.1.4",
+    "@langchain/openai": "^0.3.16",
     "nanoid": "^5.0.8",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.24.1"
   }
 }

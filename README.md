@@ -1,3 +1,3 @@
-**metaprog**
+# metaprog
 
-An experimental versatile meta-programming AI library.
+An experimental and versatile library for exploring LLM assisted meta-programming.

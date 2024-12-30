@@ -10,19 +10,25 @@ importers:
     dependencies:
       '@langchain/anthropic':
         specifier: ^0.3.8
-        version: 0.3.8(@langchain/core@0.3.18)
+        version: 0.3.8(@langchain/core@0.3.18(openai@4.77.0(zod@3.24.1)))
       '@langchain/core':
         specifier: ^0.3.18
-        version: 0.3.18
+        version: 0.3.18(openai@4.77.0(zod@3.24.1))
       '@langchain/ollama':
         specifier: ^0.1.4
-        version: 0.1.4(@langchain/core@0.3.18)
+        version: 0.1.4(@langchain/core@0.3.18(openai@4.77.0(zod@3.24.1)))
+      '@langchain/openai':
+        specifier: ^0.3.16
+        version: 0.3.16(@langchain/core@0.3.18(openai@4.77.0(zod@3.24.1)))
       nanoid:
         specifier: ^5.0.8
         version: 5.0.8
       zod:
         specifier: ^3.24.1
         version: 3.24.1
+      zod-to-json-schema:
+        specifier: ^3.24.1
+        version: 3.24.1(zod@3.24.1)
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: ^0.17.0
@@ -30,6 +36,9 @@ importers:
       '@changesets/cli':
         specifier: ^2.27.10
         version: 2.27.10
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.4.7
       prettier:
         specifier: ^3.3.3
         version: 3.3.3
@@ -276,6 +285,12 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@langchain/core': '>=0.2.21 <0.4.0'
+
+  '@langchain/openai@0.3.16':
+    resolution: {integrity: sha512-Om9HRlTeI0Ou6D4pfxbWHop4WGfkCdV/7v1W/+Jr7NSf0BNoA9jk5GqGms8ZtOYSGgPvizDu3i0TrM3B4cN4NA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@langchain/core': '>=0.2.26 <0.4.0'
 
   '@manypkg/find-root@1.1.0':
     resolution: {integrity: sha512-mki5uBvhHzO8kYYix/WRy2WX8S3B5wdVSc9D6KcU5lQNglP2yt58/VfLuAK49glRXChosY8ap2oJ1qgma3GUVA==}
@@ -594,6 +609,10 @@ packages:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
     engines: {node: '>=8'}
 
+  dotenv@16.4.7:
+    resolution: {integrity: sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==}
+    engines: {node: '>=12'}
+
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
 
@@ -863,6 +882,15 @@ packages:
 
   ollama@0.5.11:
     resolution: {integrity: sha512-lDAKcpmBU3VAOGF05NcQipHNKTdpKfAHpZ7bjCsElkUkmX7SNZImi6lwIxz/l1zQtLq0S3wuLneRuiXxX2KIew==}
+
+  openai@4.77.0:
+    resolution: {integrity: sha512-WWacavtns/7pCUkOWvQIjyOfcdr9X+9n9Vvb0zFeKVDAqwCMDHB+iSr24SVaBAhplvSG6JrRXFpcNM9gWhOGIw==}
+    hasBin: true
+    peerDependencies:
+      zod: ^3.23.8
+    peerDependenciesMeta:
+      zod:
+        optional: true
 
   os-tmpdir@1.0.2:
     resolution: {integrity: sha512-D2FR03Vir7FIu45XBY20mTb+/ZSWB00sjU9jdQXt83gDrI4Ztz5Fs7/yy74g2N5SVQY4xY1qDr4rNddwYRVX0g==}
@@ -1236,10 +1264,10 @@ packages:
     resolution: {integrity: sha512-D1mvvtDG0L5ft/jGWkLpG1+m0eQxOfaBvTNELraWj22wSVUMWxZUvYgJYcKh6jGGIkJFhH4IZPQhR4TKpc8mBw==}
     engines: {node: '>=10'}
 
-  zod-to-json-schema@3.23.5:
-    resolution: {integrity: sha512-5wlSS0bXfF/BrL4jPAbz9da5hDlDptdEppYfe+x4eIJ7jioqKG9uUxOwPzqof09u/XeVdrgFu29lZi+8XNDJtA==}
+  zod-to-json-schema@3.24.1:
+    resolution: {integrity: sha512-3h08nf3Vw3Wl3PK+q3ow/lIil81IT2Oa7YpQyUUDsEWbXveMesdfK1xBd2RhCkynwZndAxixji/7SYJJowr62w==}
     peerDependencies:
-      zod: ^3.23.3
+      zod: ^3.24.1
 
   zod@3.24.1:
     resolution: {integrity: sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==}
@@ -1500,37 +1528,47 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.0': {}
 
-  '@langchain/anthropic@0.3.8(@langchain/core@0.3.18)':
+  '@langchain/anthropic@0.3.8(@langchain/core@0.3.18(openai@4.77.0(zod@3.24.1)))':
     dependencies:
       '@anthropic-ai/sdk': 0.27.3
-      '@langchain/core': 0.3.18
+      '@langchain/core': 0.3.18(openai@4.77.0(zod@3.24.1))
       fast-xml-parser: 4.5.0
       zod: 3.24.1
-      zod-to-json-schema: 3.23.5(zod@3.24.1)
+      zod-to-json-schema: 3.24.1(zod@3.24.1)
     transitivePeerDependencies:
       - encoding
 
-  '@langchain/core@0.3.18':
+  '@langchain/core@0.3.18(openai@4.77.0(zod@3.24.1))':
     dependencies:
       ansi-styles: 5.2.0
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.15
-      langsmith: 0.2.7
+      langsmith: 0.2.7(openai@4.77.0(zod@3.24.1))
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
       uuid: 10.0.0
       zod: 3.24.1
-      zod-to-json-schema: 3.23.5(zod@3.24.1)
+      zod-to-json-schema: 3.24.1(zod@3.24.1)
     transitivePeerDependencies:
       - openai
 
-  '@langchain/ollama@0.1.4(@langchain/core@0.3.18)':
+  '@langchain/ollama@0.1.4(@langchain/core@0.3.18(openai@4.77.0(zod@3.24.1)))':
     dependencies:
-      '@langchain/core': 0.3.18
+      '@langchain/core': 0.3.18(openai@4.77.0(zod@3.24.1))
       ollama: 0.5.11
       uuid: 10.0.0
+
+  '@langchain/openai@0.3.16(@langchain/core@0.3.18(openai@4.77.0(zod@3.24.1)))':
+    dependencies:
+      '@langchain/core': 0.3.18(openai@4.77.0(zod@3.24.1))
+      js-tiktoken: 1.0.15
+      openai: 4.77.0(zod@3.24.1)
+      zod: 3.24.1
+      zod-to-json-schema: 3.24.1(zod@3.24.1)
+    transitivePeerDependencies:
+      - encoding
 
   '@manypkg/find-root@1.1.0':
     dependencies:
@@ -1803,6 +1841,8 @@ snapshots:
     dependencies:
       path-type: 4.0.0
 
+  dotenv@16.4.7: {}
+
   emoji-regex@8.0.0: {}
 
   emojilib@2.4.0: {}
@@ -1983,7 +2023,7 @@ snapshots:
     optionalDependencies:
       graceful-fs: 4.2.11
 
-  langsmith@0.2.7:
+  langsmith@0.2.7(openai@4.77.0(zod@3.24.1)):
     dependencies:
       '@types/uuid': 10.0.0
       commander: 10.0.1
@@ -1991,6 +2031,8 @@ snapshots:
       p-retry: 4.6.2
       semver: 7.6.3
       uuid: 10.0.0
+    optionalDependencies:
+      openai: 4.77.0(zod@3.24.1)
 
   locate-path@5.0.0:
     dependencies:
@@ -2066,6 +2108,20 @@ snapshots:
   ollama@0.5.11:
     dependencies:
       whatwg-fetch: 3.6.20
+
+  openai@4.77.0(zod@3.24.1):
+    dependencies:
+      '@types/node': 18.19.64
+      '@types/node-fetch': 2.6.12
+      abort-controller: 3.0.0
+      agentkeepalive: 4.5.0
+      form-data-encoder: 1.7.2
+      formdata-node: 4.4.1
+      node-fetch: 2.7.0
+    optionalDependencies:
+      zod: 3.24.1
+    transitivePeerDependencies:
+      - encoding
 
   os-tmpdir@1.0.2: {}
 
@@ -2388,7 +2444,7 @@ snapshots:
       y18n: 5.0.8
       yargs-parser: 20.2.9
 
-  zod-to-json-schema@3.23.5(zod@3.24.1):
+  zod-to-json-schema@3.24.1(zod@3.24.1):
     dependencies:
       zod: 3.24.1
 
