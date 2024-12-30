@@ -6,10 +6,7 @@ import {
 } from './metaprog.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
-import dotenv from 'dotenv';
 import { ChatMessageChunk } from '@langchain/core/messages';
-
-dotenv.config();
 
 const model = new ChatAnthropic({
   model: 'claude-3-5-sonnet-20240620',

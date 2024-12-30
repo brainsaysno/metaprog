@@ -17,8 +17,8 @@ type MetaprogFunctionConfig<
   TOutputSchema extends ZodType,
 > = {
   model: BaseChatModel;
-  arguments?: Narrow<TInputSchema>;
-  return?: TOutputSchema;
+  inputSchema?: Narrow<TInputSchema>;
+  outputSchema?: TOutputSchema;
 };
 
 export class MetaprogFunction<
@@ -107,8 +107,8 @@ export class MetaprogFunction<
         `
         <context>
         You are a TypeScript debugging assistant. Your role is to analyze a function description and a failing test case to debug and improve the provided code. The function is wrong and doesn't work correctly so you must identify the bug and fix it. You may also be given:
-        - A JSON schema for the function's arguments (separated by newlines).
-        - A JSON schema for the return type, or you will be told it is undefined.
+        - A JSON schema for the function's input arguments (separated by newlines).
+        - A JSON schema for the function's output return type, or you will be told it is undefined if it is not provided.
 
         You should modify the function as needed to ensure:
         1. The function passes the given test case.
@@ -148,14 +148,25 @@ export class MetaprogFunction<
         {actualResult}
         </actualResult>
 
+        ${
+          this.config.inputSchema
+            ? `
+          <inputSchema>
+          {inputSchema}
+          </inputSchema>
+          `
+            : ''
+        }
 
-        <argumentsSchema>
-        {argumentsSchema}
-        </argumentsSchema>
-
-        <returnSchema>
-        {returnSchema}
-        </returnSchema>
+        ${
+          this.config.outputSchema
+            ? `
+        <outputSchema>
+        {outputSchema}
+        </outputSchema>
+        `
+            : ''
+        }
         `,
       ],
     ]);
@@ -172,11 +183,11 @@ export class MetaprogFunction<
       arguments: args.map((arg) => JSON.stringify(arg)).join(', '),
       expectedResult: JSON.stringify(expectedResult),
       actualResult: JSON.stringify(actualResult),
-      argumentsSchema: this.config.arguments
+      inputSchema: this.config.inputSchema
         ?.map((arg) => zodToJsonSchema(arg))
         .join('\n\n'),
-      returnSchema: this.config.return
-        ? zodToJsonSchema(this.config.return)
+      outputSchema: this.config.outputSchema
+        ? zodToJsonSchema(this.config.outputSchema)
         : undefined,
     });
 
@@ -215,7 +226,7 @@ export class MetaprogFunction<
         'system',
         `
         <context>
-        I want you to act as a typescript programmer. You will be given a function description and you will generate the code for the function. Additionally, you may be given the json schema for the arguments (separated by newlines) and the json schema for the return type.
+        I want you to act as a typescript programmer. You will be given a function description and you will generate the code for the function. Additionally, you may be given the json schema for the input arguments (separated by newlines) and the json schema for the output return type.
         </context>
 
         <requirements>
@@ -229,14 +240,26 @@ export class MetaprogFunction<
         'user',
         `
         <functionDescription>{functionDescription}</functionDescription>
-        
-        <argumentsSchema>
-        {argumentsSchema}
-        </argumentsSchema>
 
-        <returnSchema>
-        {returnSchema}
-        </returnSchema>
+        ${
+          this.config.inputSchema
+            ? `
+          <inputSchema>
+          {inputSchema}
+          </inputSchema>
+          `
+            : ''
+        }
+
+        ${
+          this.config.outputSchema
+            ? `
+          <outputSchema>
+          {outputSchema}
+          </outputSchema>
+          `
+            : ''
+        }
         `,
       ],
     ]);
@@ -245,11 +268,11 @@ export class MetaprogFunction<
 
     const result = await chain.invoke({
       functionDescription: this.description,
-      argumentsSchema: this.config.arguments
+      inputSchema: this.config.inputSchema
         ?.map((arg) => zodToJsonSchema(arg))
         .join('\n\n'),
-      returnSchema: this.config.return
-        ? zodToJsonSchema(this.config.return)
+      outputSchema: this.config.outputSchema
+        ? zodToJsonSchema(this.config.outputSchema)
         : undefined,
     });
 
