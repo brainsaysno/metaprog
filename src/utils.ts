@@ -8,3 +8,11 @@ export async function retry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
     throw error;
   }
 }
+
+export type Narrow<T> = {
+  [K in keyof T]: K extends keyof []
+    ? T[K]
+    : T[K] extends (...args: any[]) => unknown
+      ? T[K]
+      : Narrow<T[K]>;
+};

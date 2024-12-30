@@ -1,22 +1,16 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
-import fs from 'fs/promises';
-import { nanoid } from 'nanoid';
 import path from 'path';
 import { z, type ZodType } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { retry } from './utils.js';
-
-type MetaprogCache = {
-  id: string;
-  description: string;
-}[];
+import { retry, type Narrow } from './utils.js';
+import { FileSystemCacheHandler, type CacheHandler } from './cache.js';
 
 const BASE_PATH = path.join(__dirname, 'metaprog');
 
-export const GENERATED_PATH = path.join(BASE_PATH, 'generated');
+export const DEFAULT_GENERATED_PATH = path.join(BASE_PATH, 'generated');
 
-export const CACHE_PATH = path.join(BASE_PATH, 'metaprog-cache.json');
+export const DEFAULT_CACHE_PATH = path.join(BASE_PATH, 'metaprog-cache.json');
 
 type MetaprogFunctionConfig<
   TInputSchema extends ZodType[],
@@ -27,14 +21,6 @@ type MetaprogFunctionConfig<
   return?: TOutputSchema;
 };
 
-type Narrow<T> = {
-  [K in keyof T]: K extends keyof []
-    ? T[K]
-    : T[K] extends (...args: any[]) => unknown
-      ? T[K]
-      : Narrow<T[K]>;
-};
-
 export class MetaprogFunction<
   TInputSchema extends ZodType[],
   TOutputSchema extends ZodType,
@@ -42,6 +28,10 @@ export class MetaprogFunction<
   constructor(
     private description: string,
     private config: MetaprogFunctionConfig<TInputSchema, TOutputSchema>,
+    private cacheHandler: CacheHandler = new FileSystemCacheHandler(
+      DEFAULT_CACHE_PATH,
+      DEFAULT_GENERATED_PATH,
+    ),
   ) {}
 
   public async test(
@@ -61,7 +51,9 @@ export class MetaprogFunction<
     } catch (error) {
       await retry(async () => {
         actualResult ??= error;
-        console.error('Test failed, regenerating function...');
+        console.error(
+          'Metaprog function test failed. Regenerating function...',
+        );
 
         const fixedFunction = await this.fixFunction(
           args,
@@ -79,37 +71,29 @@ export class MetaprogFunction<
   }
 
   public async build() {
-    const cachedFunctionId = await this.checkCache(this.description);
+    const cachedFunctionId = await this.cacheHandler.checkCache(
+      this.description,
+    );
 
     if (cachedFunctionId) {
-      return this.loadFunction(cachedFunctionId);
+      return this.cacheHandler.loadFunction<
+        (
+          ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
+        ) => z.infer<TOutputSchema>
+      >(cachedFunctionId);
     }
 
     const functionCode = await this.generateFunction();
-
-    const createdFunctionId = await this.writeFunction(functionCode);
-
-    const createdFunction = await this.loadFunction(createdFunctionId);
-
-    return createdFunction;
-  }
-
-  private async loadExistingCache() {
-    try {
-      const cache = await fs.readFile(CACHE_PATH, 'utf-8');
-
-      return JSON.parse(cache) as MetaprogCache;
-    } catch (error) {
-      return [];
-    }
-  }
-
-  private async checkCache(functionDescription: string) {
-    const cache = await this.loadExistingCache();
-
-    return (
-      cache.find((item) => item.description === functionDescription)?.id ?? null
+    const createdFunctionId = await this.cacheHandler.writeFunction(
+      functionCode,
+      this.description,
     );
+
+    return this.cacheHandler.loadFunction<
+      (
+        ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
+      ) => z.infer<TOutputSchema>
+    >(createdFunctionId);
   }
 
   private async fixFunction(
@@ -139,6 +123,9 @@ export class MetaprogFunction<
           - Adheres to the given JSON schemas (if provided).
           - Is exported as default.
         - Output only the corrected TypeScript code, ready to execute.
+        - Do not include any markdown syntax or other formatting.
+        - Do not include any comments or other non-code content.
+        - Do not include any explanations or other non-code content.
         </requirements>
       `,
       ],
@@ -175,14 +162,8 @@ export class MetaprogFunction<
 
     const chain = prompt.pipe(this.config.model);
 
-    const cache = await this.loadExistingCache();
-    const functionCache = cache.find(
-      (item) => item.description === this.description,
-    );
-
-    const existingFunctionCode = await fs.readFile(
-      path.join(GENERATED_PATH, `${functionCache?.id}.ts`),
-      'utf-8',
+    const existingFunctionCode = await this.cacheHandler.fetchCode(
+      this.description,
     );
 
     const result = await chain.invoke({
@@ -201,11 +182,23 @@ export class MetaprogFunction<
 
     const functionCode = this.postProcessFunctionCode(result.content as string);
 
-    const newId = functionCache?.id
-      ? await this.replaceFunction(functionCache.id, functionCode)
-      : await this.writeFunction(functionCode);
+    const functionCache = await this.cacheHandler.loadFunctionCache(
+      this.description,
+    );
 
-    return await this.loadFunction(newId);
+    const newId = functionCache
+      ? await this.cacheHandler.replaceFunction(
+          functionCache.id,
+          functionCode,
+          this.description,
+        )
+      : await this.cacheHandler.writeFunction(functionCode, this.description);
+
+    return await this.cacheHandler.loadFunction<
+      (
+        ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
+      ) => z.infer<TOutputSchema>
+    >(newId);
   }
 
   private postProcessFunctionCode(functionCode: string) {
@@ -213,21 +206,7 @@ export class MetaprogFunction<
   }
 
   public async fetchCode() {
-    const cache = await this.loadExistingCache();
-    const functionCache = cache.find(
-      (item) => item.description === this.description,
-    );
-
-    if (!functionCache) {
-      throw new Error('Function not found in cache');
-    }
-
-    const existingFunctionCode = await fs.readFile(
-      path.join(GENERATED_PATH, `${functionCache?.id}.ts`),
-      'utf-8',
-    );
-
-    return existingFunctionCode;
+    return this.cacheHandler.fetchCode(this.description);
   }
 
   private async generateFunction() {
@@ -277,54 +256,5 @@ export class MetaprogFunction<
     const functionCode = this.postProcessFunctionCode(result.content as string);
 
     return functionCode;
-  }
-
-  private async replaceFunction(id: string, functionCode: string) {
-    const cache = await this.loadExistingCache();
-
-    const newCache = cache.filter((item) => item.id !== id);
-
-    const newId = nanoid();
-
-    newCache.push({ id: newId, description: this.description });
-
-    await fs.writeFile(CACHE_PATH, JSON.stringify(newCache, null, 2));
-
-    const filePath = path.join(GENERATED_PATH, `${newId}.ts`);
-
-    await fs.writeFile(filePath, functionCode);
-
-    return newId;
-  }
-
-  private async writeFunction(
-    functionCode: string,
-    id: string = nanoid(),
-  ): Promise<string> {
-    console.log(id);
-    const filePath = path.join(GENERATED_PATH, `${id}.ts`);
-
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-
-    await fs.writeFile(filePath, functionCode);
-
-    const cache = await this.loadExistingCache();
-
-    cache.push({ id, description: this.description });
-
-    await fs.writeFile(CACHE_PATH, JSON.stringify(cache, null, 2));
-
-    return id;
-  }
-
-  private async loadFunction(id: string) {
-    const filePath = path.join(GENERATED_PATH, `${id}.ts`);
-
-    const { default: func } = await import(filePath);
-    return func as (
-      ...args: {
-        [K in keyof TInputSchema]: z.infer<TInputSchema[K]>;
-      }
-    ) => z.infer<TOutputSchema>;
   }
 }
