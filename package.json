@@ -27,6 +27,7 @@
     "dist"
   ],
   "type": "module",
+  "main": "dist/index.js",
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.17.0",
     "@changesets/cli": "^2.27.10",
