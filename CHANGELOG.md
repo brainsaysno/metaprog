@@ -1,5 +1,11 @@
 # metaprog
 
+## 2.0.0
+
+### Major Changes
+
+- 81125d8: Move to builder API
+
 ## 1.0.2
 
 ### Patch Changes
