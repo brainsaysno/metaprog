@@ -2,7 +2,7 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import {
   DEFAULT_CACHE_PATH,
   DEFAULT_GENERATED_PATH,
-  MetaprogFunction,
+  MetaprogFunctionBuilder,
 } from './metaprog.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
@@ -28,9 +28,12 @@ describe('function generation', () => {
       }),
     );
 
-    const func = await new MetaprogFunction('Console log "Hello world!"', {
-      model,
-    }).build();
+    const func = await new MetaprogFunctionBuilder(
+      'Console log "Hello world!"',
+      {
+        model,
+      },
+    ).build();
 
     const spy = vi.spyOn(console, 'log');
 
@@ -48,7 +51,7 @@ describe('function generation', () => {
       }),
     );
 
-    const func = await new MetaprogFunction('Multiply two numbers', {
+    const func = await new MetaprogFunctionBuilder('Multiply two numbers', {
       model,
     }).build();
 
@@ -62,12 +65,14 @@ describe('function generation', () => {
   it('should cache a generated function', async () => {
     const spy = vi.spyOn(model, 'invoke').mockResolvedValue(
       new ChatMessageChunk({
-        content: `export default function helloWorld() { console.log('Hello world!'); }`,
+        content: `export default function multiply(a: number, b: number): number { return a * b; }`,
         role: 'assistant',
       }),
     );
 
-    const func = new MetaprogFunction('Multiply two numbers', { model });
+    const func = new MetaprogFunctionBuilder('Multiply two numbers', {
+      model,
+    });
 
     await func.build();
     await func.build();
@@ -86,7 +91,7 @@ describe('function generation', () => {
       }),
     );
 
-    const result = await new MetaprogFunction(
+    const result = await new MetaprogFunctionBuilder(
       'Divide two numbers that throws a custom error for division by zero',
       { model },
     ).build();
@@ -118,10 +123,16 @@ describe('function generation', () => {
         }),
       );
 
-    const func = new MetaprogFunction('Add two numbers', {
+    const func = await new MetaprogFunctionBuilder('Add two numbers', {
       model,
-    });
+    })
+      .test(['1', '2'], 3)
+      .test(['2', '3'], 5)
+      .build();
 
-    await func.test(['1', '2'], 3);
+    expect(func).toBeDefined();
+
+    expect(func(1, 2)).toBe(3);
+    expect(func(2, 3)).toBe(5);
   });
 });

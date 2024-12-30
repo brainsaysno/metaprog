@@ -21,10 +21,15 @@ type MetaprogFunctionConfig<
   outputSchema?: TOutputSchema;
 };
 
-export class MetaprogFunction<
+export class MetaprogFunctionBuilder<
   TInputSchema extends ZodType[],
   TOutputSchema extends ZodType,
 > {
+  private testCases: {
+    input: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> };
+    output: z.infer<TOutputSchema>;
+  }[] = [];
+
   constructor(
     private description: string,
     private config: MetaprogFunctionConfig<TInputSchema, TOutputSchema>,
@@ -34,38 +39,79 @@ export class MetaprogFunction<
     ),
   ) {}
 
-  public async test(
+  public test(
     args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> },
     expected: z.infer<TOutputSchema>,
   ) {
-    const builtFunction = await this.build();
+    this.testCases.push({ input: args, output: expected });
+    return this;
+  }
+
+  private async runAllTests(functionId: string) {
+    let currentFunctionId = functionId;
+    for (const testCase of this.testCases) {
+      currentFunctionId = await this.runTest(
+        currentFunctionId,
+        testCase.input,
+        testCase.output,
+      );
+
+      console.log('Running test case', testCase);
+    }
+  }
+
+  private async runTest(
+    functionId: string,
+    args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> },
+    expected: z.infer<TOutputSchema>,
+  ) {
+    const builtFunction =
+      await this.cacheHandler.loadFunction<
+        (
+          ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
+        ) => z.infer<TOutputSchema>
+      >(functionId);
 
     let actualResult: z.infer<TOutputSchema>;
 
     try {
       actualResult = builtFunction(...args);
 
+      console.log('Actual result', actualResult);
+      console.log('Expected result', expected);
+
       if (actualResult !== expected) {
         throw new Error('Function did not return the expected output');
       }
+
+      return functionId;
     } catch (error) {
-      await retry(async () => {
+      return await retry(async () => {
         actualResult ??= error;
         console.error(
           'Metaprog function test failed. Regenerating function...',
         );
 
-        const fixedFunction = await this.fixFunction(
+        const fixedFunctionId = await this.fixFunction(
           args,
           expected,
           actualResult,
         );
+
+        const fixedFunction =
+          await this.cacheHandler.loadFunction<
+            (
+              ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
+            ) => z.infer<TOutputSchema>
+          >(fixedFunctionId);
 
         const fixedResult = fixedFunction(...args);
 
         if (fixedResult !== expected) {
           throw new Error('Function failed to generate correctly after retry');
         }
+
+        return fixedFunctionId;
       });
     }
   }
@@ -84,12 +130,15 @@ export class MetaprogFunction<
     }
 
     const functionCode = await this.generateFunction();
+
     const createdFunctionId = await this.cacheHandler.writeFunction(
       functionCode,
       this.description,
     );
 
-    return this.cacheHandler.loadFunction<
+    await this.runAllTests(createdFunctionId);
+
+    return await this.cacheHandler.loadFunction<
       (
         ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
       ) => z.infer<TOutputSchema>
@@ -205,11 +254,7 @@ export class MetaprogFunction<
         )
       : await this.cacheHandler.writeFunction(functionCode, this.description);
 
-    return await this.cacheHandler.loadFunction<
-      (
-        ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
-      ) => z.infer<TOutputSchema>
-    >(newId);
+    return newId;
   }
 
   private postProcessFunctionCode(functionCode: string) {
