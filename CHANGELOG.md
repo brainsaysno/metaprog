@@ -1,5 +1,11 @@
 # metaprog
 
+## 2.0.1
+
+### Patch Changes
+
+- 5c2579c: Update README.md
+
 ## 2.0.0
 
 ### Major Changes
