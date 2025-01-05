@@ -12,32 +12,47 @@ export const DEFAULT_GENERATED_PATH = path.join(BASE_PATH, 'generated');
 
 export const DEFAULT_CACHE_PATH = path.join(BASE_PATH, 'metaprog-cache.json');
 
-type MetaprogFunctionConfig<
-  TInputSchema extends ZodType[],
+type MetaprogFunctionBuilderConfigInput<
+  TInputSchema extends readonly ZodType[],
   TOutputSchema extends ZodType,
 > = {
   model: BaseChatModel;
-  inputSchema?: Narrow<TInputSchema>;
+  inputSchema?: TInputSchema;
   outputSchema?: TOutputSchema;
+  cacheHandler?: CacheHandler;
+};
+
+type MetaprogFunctionBuilderConfig<
+  TInputSchema extends readonly ZodType[],
+  TOutputSchema extends ZodType,
+> = {
+  model: BaseChatModel;
+  inputSchema?: TInputSchema;
+  outputSchema?: TOutputSchema;
+  cacheHandler: CacheHandler;
 };
 
 export class MetaprogFunctionBuilder<
-  TInputSchema extends ZodType[],
+  TInputSchema extends readonly ZodType[],
   TOutputSchema extends ZodType,
 > {
   private testCases: {
     input: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> };
     output: z.infer<TOutputSchema>;
   }[] = [];
+  private config: MetaprogFunctionBuilderConfig<TInputSchema, TOutputSchema>;
 
   constructor(
     private description: string,
-    private config: MetaprogFunctionConfig<TInputSchema, TOutputSchema>,
-    private cacheHandler: CacheHandler = new FileSystemCacheHandler(
-      DEFAULT_CACHE_PATH,
-      DEFAULT_GENERATED_PATH,
-    ),
-  ) {}
+    config: MetaprogFunctionBuilderConfigInput<TInputSchema, TOutputSchema>,
+  ) {
+    this.config = {
+      ...config,
+      cacheHandler:
+        config.cacheHandler ??
+        new FileSystemCacheHandler(DEFAULT_CACHE_PATH, DEFAULT_GENERATED_PATH),
+    };
+  }
 
   public test(
     args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> },
@@ -66,7 +81,7 @@ export class MetaprogFunctionBuilder<
     expected: z.infer<TOutputSchema>,
   ) {
     const builtFunction =
-      await this.cacheHandler.loadFunction<
+      await this.config.cacheHandler.loadFunction<
         (
           ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
         ) => z.infer<TOutputSchema>
@@ -99,7 +114,7 @@ export class MetaprogFunctionBuilder<
         );
 
         const fixedFunction =
-          await this.cacheHandler.loadFunction<
+          await this.config.cacheHandler.loadFunction<
             (
               ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
             ) => z.infer<TOutputSchema>
@@ -117,12 +132,12 @@ export class MetaprogFunctionBuilder<
   }
 
   public async build() {
-    const cachedFunctionId = await this.cacheHandler.checkCache(
+    const cachedFunctionId = await this.config.cacheHandler.checkCache(
       this.description,
     );
 
     if (cachedFunctionId) {
-      return this.cacheHandler.loadFunction<
+      return this.config.cacheHandler.loadFunction<
         (
           ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
         ) => z.infer<TOutputSchema>
@@ -131,14 +146,14 @@ export class MetaprogFunctionBuilder<
 
     const functionCode = await this.generateFunction();
 
-    const createdFunctionId = await this.cacheHandler.writeFunction(
+    const createdFunctionId = await this.config.cacheHandler.writeFunction(
       functionCode,
       this.description,
     );
 
     await this.runAllTests(createdFunctionId);
 
-    return await this.cacheHandler.loadFunction<
+    return await this.config.cacheHandler.loadFunction<
       (
         ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
       ) => z.infer<TOutputSchema>
@@ -222,7 +237,7 @@ export class MetaprogFunctionBuilder<
 
     const chain = prompt.pipe(this.config.model);
 
-    const existingFunctionCode = await this.cacheHandler.fetchCode(
+    const existingFunctionCode = await this.config.cacheHandler.fetchCode(
       this.description,
     );
 
@@ -242,17 +257,20 @@ export class MetaprogFunctionBuilder<
 
     const functionCode = this.postProcessFunctionCode(result.content as string);
 
-    const functionCache = await this.cacheHandler.loadFunctionCache(
+    const functionCache = await this.config.cacheHandler.loadFunctionCache(
       this.description,
     );
 
     const newId = functionCache
-      ? await this.cacheHandler.replaceFunction(
+      ? await this.config.cacheHandler.replaceFunction(
           functionCache.id,
           functionCode,
           this.description,
         )
-      : await this.cacheHandler.writeFunction(functionCode, this.description);
+      : await this.config.cacheHandler.writeFunction(
+          functionCode,
+          this.description,
+        );
 
     return newId;
   }
@@ -262,7 +280,7 @@ export class MetaprogFunctionBuilder<
   }
 
   public async fetchCode() {
-    return this.cacheHandler.fetchCode(this.description);
+    return this.config.cacheHandler.fetchCode(this.description);
   }
 
   private async generateFunction() {

@@ -22,6 +22,7 @@ export interface CacheHandler {
   ): Promise<string>;
   loadFunction<T>(id: string): Promise<T>;
   fetchCode(description: string): Promise<string>;
+  clearCache(): Promise<void>;
 }
 
 export class FileSystemCacheHandler implements CacheHandler {
@@ -112,5 +113,10 @@ export class FileSystemCacheHandler implements CacheHandler {
       path.join(this.generatedPath, `${functionCache?.id}.ts`),
       'utf-8',
     );
+  }
+
+  async clearCache(): Promise<void> {
+    await fs.rm(this.cachePath, { force: true });
+    await fs.rm(this.generatedPath, { recursive: true, force: true });
   }
 }
