@@ -1,5 +1,11 @@
 # metaprog
 
+## 2.0.2
+
+### Patch Changes
+
+- abb8b85: add type tests
+
 ## 2.0.1
 
 ### Patch Changes
