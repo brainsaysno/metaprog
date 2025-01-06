@@ -60,15 +60,15 @@
 
 ## About the Project
 
-Metaprog aims to automate or streamline certain coding tasks by leveraging large language models (LLMs) to generate, cache, revise, and test TypeScript functions on the fly.
+**_Metaprog_** is an AI metaprogramming library for TypeScript that enables you to generate, validate and test code using _LLMs_ on runtime. It provides a simple yet powerful builder API to describe the code you want to generate and automatically handles the interaction with **LLMs**, validation of the output, and testing of the generated code.
 
 ### Key Features
 
 - On-demand function generation based on a function description
-- Integration with large language models from the [LangChain](https://github.com/hwchase17/langchain) ecosystem
+- Integration with LLMs from the [_LangChain_](https://github.com/hwchase17/langchain) ecosystem
 - Automatic caching of generated functions to avoid re-generation
 - Automated test and re-prompt process if a generated function fails a user-supplied test case
-- Strong type-safety and flexible configuration for input and output schemas using [Zod](https://github.com/colinhacks/zod)
+- Strong type-safety and flexible configuration for input and output schemas using [_Zod_](https://github.com/colinhacks/zod)
 
 ## Getting Started
 
@@ -90,7 +90,7 @@ yarn add metaprog @langchain/core @langchain/anthropic
 
 ### Basic Usage
 
-Below is a simple (but overkill) example demonstrating how to generate a function that logs "Hello world!" to the console.
+Below is a simple (and extremely overkill) example demonstrating how to generate a function that logs "Hello world!" to the console.
 
 ```typescript
 import { MetaprogFunctionBuilder } from 'metaprog';
