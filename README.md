@@ -19,7 +19,7 @@
   <br/>
   <br/>
 
-<h1 align="center">Metaprog</h1>
+<h1 align="center"><i>metaprog</i></h1>
   <p align="center">
     <a href="https://github.com/brainsaysno/metaprog"><strong>Explore docs »</strong></a>
     <br />
@@ -74,7 +74,7 @@ Metaprog aims to automate or streamline certain coding tasks by leveraging large
 
 ### Installation
 
-You'll need to install the Metaprog package, as well as LangChain and the LLM you want to use. For the rest of the guide, we'll use Anthropic's Claude 3.5 Sonnet model.
+You'll need to install the Metaprog package, as well as LangChain and the LLM-specific package you want to use. For the rest of the guide, we'll use Anthropic's Claude 3.5 Sonnet model.
 
 ```bash
 npm install metaprog @langchain/core @langchain/anthropic # or any other LLM provider
