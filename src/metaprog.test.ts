@@ -135,8 +135,8 @@ describe('MetapprogFunctionBuilder', () => {
       model,
       cacheHandler,
     })
-      .test(['1', '2'], 3)
-      .test(['2', '3'], 5)
+      .test((f) => f('1', '2') === 3)
+      .test((f) => f('2', '3') === 5)
       .build();
 
     expect(func).toBeDefined();

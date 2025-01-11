@@ -37,8 +37,11 @@ export class MetaprogFunctionBuilder<
   TOutputSchema extends ZodType,
 > {
   private testCases: {
-    input: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> };
-    output: z.infer<TOutputSchema>;
+    testCallback: (
+      generatedFunction: (
+        ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
+      ) => z.infer<TOutputSchema>,
+    ) => boolean;
   }[] = [];
   private config: MetaprogFunctionBuilderConfig<TInputSchema, TOutputSchema>;
 
@@ -55,10 +58,13 @@ export class MetaprogFunctionBuilder<
   }
 
   public test(
-    args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> },
-    expected: z.infer<TOutputSchema>,
+    testCallback: (
+      generatedFunction: (
+        ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
+      ) => z.infer<TOutputSchema>,
+    ) => boolean,
   ) {
-    this.testCases.push({ input: args, output: expected });
+    this.testCases.push({ testCallback });
     return this;
   }
 
@@ -67,68 +73,51 @@ export class MetaprogFunctionBuilder<
     for (const testCase of this.testCases) {
       currentFunctionId = await this.runTest(
         currentFunctionId,
-        testCase.input,
-        testCase.output,
+        testCase.testCallback,
       );
 
-      console.log('Running test case', testCase);
+      console.log('Running test case', testCase.testCallback.toString());
     }
   }
 
   private async runTest(
     functionId: string,
-    args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> },
-    expected: z.infer<TOutputSchema>,
+    testCallback: (
+      generatedFunction: (
+        ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
+      ) => z.infer<TOutputSchema>,
+    ) => boolean,
   ) {
-    const builtFunction =
-      await this.config.cacheHandler.loadFunction<
-        (
-          ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
-        ) => z.infer<TOutputSchema>
-      >(functionId);
+    const testCode = testCallback.toString();
 
-    let actualResult: z.infer<TOutputSchema>;
-
-    try {
-      actualResult = builtFunction(...args);
-
-      console.log('Actual result', actualResult);
-      console.log('Expected result', expected);
-
-      if (actualResult !== expected) {
-        throw new Error('Function did not return the expected output');
-      }
-
-      return functionId;
-    } catch (error) {
-      return await retry(async () => {
-        actualResult ??= error;
-        console.error(
-          'Metaprog function test failed. Regenerating function...',
-        );
-
-        const fixedFunctionId = await this.fixFunction(
-          args,
-          expected,
-          actualResult,
-        );
-
-        const fixedFunction =
+    return await retry(
+      async () => {
+        console.log('Loading function', functionId);
+        let functionUnderTest =
           await this.config.cacheHandler.loadFunction<
             (
               ...args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> }
             ) => z.infer<TOutputSchema>
-          >(fixedFunctionId);
+          >(functionId);
 
-        const fixedResult = fixedFunction(...args);
+        console.log('Function under test', functionUnderTest.toString());
 
-        if (fixedResult !== expected) {
-          throw new Error('Function failed to generate correctly after retry');
-        }
+        const result = testCallback(functionUnderTest);
 
-        return fixedFunctionId;
-      });
-    }
+        console.log('Test result', result);
+
+        if (result === false) throw new Error('Test Failed.');
+
+        return functionId;
+      },
+      {
+        beforeRetry: async (error) => {
+          console.log('Retrying test', testCode);
+
+          functionId = await this.fixFunction(testCode, error);
+        },
+      },
+    );
   }
 
   public async build() {
@@ -161,8 +150,7 @@ export class MetaprogFunctionBuilder<
   }
 
   private async fixFunction(
-    args: { [K in keyof TInputSchema]: z.infer<TInputSchema[K]> },
-    expectedResult: z.infer<TOutputSchema>,
+    testCode: string,
     actualResult: z.infer<TOutputSchema>,
   ) {
     const prompt = ChatPromptTemplate.fromMessages([
@@ -196,28 +184,22 @@ export class MetaprogFunctionBuilder<
       [
         'user',
         `
-        <functionDescription>{functionDescription}</functionDescription>
+        <function-description>{functionDescription}</function-description>
 
-        <existingFunctionCode>{existingFunctionCode}</existingFunctionCode>
+        <existing-function-code>{existingFunctionCode}</existing-function-code>
 
-        <arguments>
-        {arguments}
-        </arguments>
+        <test-code-that-failed>{testCodeThatFailed}</test-code-that-failed>
 
-        <expectedResult>
-        {expectedResult}
-        </expectedResult>
-
-        <actualResult>
-        {actualResult}
-        </actualResult>
+        <code-run-result>
+        {codeRunResult}
+        </code-run-result>
 
         ${
           this.config.inputSchema
             ? `
-          <inputSchema>
-          {inputSchema}
-          </inputSchema>
+          <function-input-schema>
+          {functionInputSchema}
+          </function-input-schema>
           `
             : ''
         }
@@ -225,10 +207,10 @@ export class MetaprogFunctionBuilder<
         ${
           this.config.outputSchema
             ? `
-        <outputSchema>
-        {outputSchema}
-        </outputSchema>
-        `
+          <function-output-schema>
+          {functionOutputSchema}
+          </function-output-schema>
+          `
             : ''
         }
         `,
@@ -241,21 +223,24 @@ export class MetaprogFunctionBuilder<
       this.description,
     );
 
+    console.log('------ Fixing function ------');
     const result = await chain.invoke({
       functionDescription: this.description,
       existingFunctionCode,
-      arguments: args.map((arg) => JSON.stringify(arg)).join(', '),
-      expectedResult: JSON.stringify(expectedResult),
-      actualResult: JSON.stringify(actualResult),
-      inputSchema: this.config.inputSchema
+      testCodeThatFailed: testCode,
+      codeRunResult: JSON.stringify(actualResult),
+      functionInputSchema: this.config.inputSchema
         ?.map((arg) => zodToJsonSchema(arg))
         .join('\n\n'),
-      outputSchema: this.config.outputSchema
+      functionOutputSchema: this.config.outputSchema
         ? zodToJsonSchema(this.config.outputSchema)
         : undefined,
     });
 
     const functionCode = this.postProcessFunctionCode(result.content as string);
+
+    console.log('Existing function code', existingFunctionCode);
+    console.log('Fixed function code', functionCode);
 
     const functionCache = await this.config.cacheHandler.loadFunctionCache(
       this.description,
@@ -329,6 +314,7 @@ export class MetaprogFunctionBuilder<
 
     const chain = prompt.pipe(this.config.model);
 
+    console.log('Generating function');
     const result = await chain.invoke({
       functionDescription: this.description,
       inputSchema: this.config.inputSchema

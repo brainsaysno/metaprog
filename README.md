@@ -181,14 +181,12 @@ const model = new ChatAnthropic({
 
 const addStrings = await new MetaprogFunctionBuilder('Add two numbers', {
   model,
-  inputSchema,
-  outputSchema,
 })
-  .test(['1', '2'], 3) // If not passed, fails after 3 retries.
-  .test(['-5', '15'], 10) // If not passed, fails after 3 retries.
+  .test((f) => f('1', '2') === 3) // If not passed, retries generation
+  .test((f) => f('-5', '15') === 10) // If not passed, retries generation
   .build();
 
-addStrings('1', '2'); // This result is ensured to be 3 as per the test.
+addStrings('1', '2'); // This result is ensured to be 3 as per the test
 ```
 
 ### Caching
@@ -211,7 +209,7 @@ import { MetaprogFunctionBuilder } from 'metaprog';
 import { ChatAnthropic } from '@langchain/anthropic';
 
 const model = new ChatAnthropic({
-  model: 'claude-3-5-sonnet-20240620',
+  model: 'claude-3-5-sonnet-latest',
   apiKey: 'your_api_key_here',
 });
 
