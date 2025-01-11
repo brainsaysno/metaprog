@@ -15,7 +15,7 @@
     <img width="35%" alt="Panda banner" src="https://github.com/user-attachments/assets/6d76bf9d-975b-4a8f-aae1-e7d3303c0536"/>
   </a>
   <br/>
-  <i> An experimental and versatile library for exploring LLM-assisted meta-programming </i>
+  <i> An experimental and versatile library for exploring LLM-assisted meta-programming. </i>
   <br/>
   <br/>
 
