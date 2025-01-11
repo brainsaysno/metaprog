@@ -18,7 +18,7 @@ describe('retry', () => {
       .mockRejectedValueOnce(new Error('fail'))
       .mockResolvedValue('success');
 
-    const result = await retry(mockFn, 3);
+    const result = await retry(mockFn, { retries: 3 });
 
     expect(result).toBe('success');
     expect(mockFn).toHaveBeenCalledTimes(3);
@@ -28,7 +28,7 @@ describe('retry', () => {
     const error = new Error('test error');
     const mockFn = vi.fn().mockRejectedValue(error);
 
-    await expect(retry(mockFn, 3)).rejects.toThrow(error);
+    await expect(retry(mockFn, { retries: 3 })).rejects.toThrow(error);
     expect(mockFn).toHaveBeenCalledTimes(3);
   });
 
