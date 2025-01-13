@@ -230,11 +230,11 @@ Contributions are welcome! Feel free to submit issues or PRs on GitHub if you fi
 
 This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
 
-[contributors-shield]: https://img.shields.io/github/contributors/brainsaysno/metaprog.svg?style=for-the-badge
-[contributors-url]: https://github.com/brainsaysno/metaprog/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/brainsaysno/metaprog.svg?style=for-the-badge
-[forks-url]: https://github.com/brainsaysno/metaprog/network/members
-[stars-shield]: https://img.shields.io/github/stars/brainsaysno/metaprog.svg?style=for-the-badge
-[stars-url]: https://github.com/brainsaysno/metaprog/stargazers
-[issues-shield]: https://img.shields.io/github/issues/brainsaysno/metaprog.svg?style=for-the-badge
-[issues-url]: https://github.com/brainsaysno/metaprog/issues
+[contributors-shield]: https://img.shields.io/github/contributors/brainsaysno/metaprog.svg?style=for-the-badge&r
+[contributors-url]: https://github.com/brainsaysno/metaprog/graphs/contributors?r
+[forks-shield]: https://img.shields.io/github/forks/brainsaysno/metaprog.svg?style=for-the-badge&r
+[forks-url]: https://github.com/brainsaysno/metaprog/network/members?r
+[stars-shield]: https://img.shields.io/github/stars/brainsaysno/metaprog.svg?style=for-the-badge&r
+[stars-url]: https://github.com/brainsaysno/metaprog/stargazers?r
+[issues-shield]: https://img.shields.io/github/issues/brainsaysno/metaprog.svg?style=for-the-badge&r
+[issues-url]: https://github.com/brainsaysno/metaprog/issues?r
