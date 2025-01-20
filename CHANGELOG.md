@@ -1,5 +1,11 @@
 # metaprog
 
+## 3.0.0
+
+### Major Changes
+
+- 3fafa96: Change builder API
+
 ## 2.0.3
 
 ### Patch Changes
