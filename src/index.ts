@@ -1,1 +1,1 @@
-export { MetaprogFunctionBuilder } from './metaprog.js';
+export { createMetaprogBuilder } from './metaprog.js';

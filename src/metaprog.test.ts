@@ -2,9 +2,17 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import {
   DEFAULT_CACHE_PATH,
   DEFAULT_GENERATED_PATH,
-  MetaprogFunctionBuilder,
+  createMetaprogBuilder,
 } from './metaprog.js';
-import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  expectTypeOf,
+  it,
+  vi,
+} from 'vitest';
 import { ChatMessageChunk } from '@langchain/core/messages';
 import { z } from 'zod';
 import { FileSystemCacheHandler } from './cache.js';
@@ -19,12 +27,18 @@ const model = new ChatAnthropic({
   apiKey: 'invalid_api_key_that_shouldnt_be_used',
 });
 
+let meta: ReturnType<typeof createMetaprogBuilder>;
+
+beforeEach(() => {
+  meta = createMetaprogBuilder({ model, cacheHandler });
+});
+
 afterEach(async () => {
   vi.restoreAllMocks();
   await cacheHandler.clearCache();
 });
 
-describe('MetapprogFunctionBuilder', () => {
+describe('meta', () => {
   it('should generate a hello world', async () => {
     vi.spyOn(model, 'invoke').mockResolvedValue(
       new ChatMessageChunk({
@@ -33,13 +47,7 @@ describe('MetapprogFunctionBuilder', () => {
       }),
     );
 
-    const func = await new MetaprogFunctionBuilder(
-      'Console log "Hello world!"',
-      {
-        model,
-        cacheHandler,
-      },
-    ).build();
+    const func = await meta`Console log "Hello world!"`.build();
 
     const spy = vi.spyOn(console, 'log');
 
@@ -57,10 +65,7 @@ describe('MetapprogFunctionBuilder', () => {
       }),
     );
 
-    const func = await new MetaprogFunctionBuilder('Multiply two numbers', {
-      model,
-      cacheHandler,
-    }).build();
+    const func = await meta`Multiply two numbers`.build();
 
     expect(func).toBeDefined();
 
@@ -77,10 +82,7 @@ describe('MetapprogFunctionBuilder', () => {
       }),
     );
 
-    const func = new MetaprogFunctionBuilder('Multiply two numbers', {
-      model,
-      cacheHandler,
-    });
+    const func = meta`Multiply two numbers`;
 
     await func.build();
     await func.build();
@@ -99,10 +101,9 @@ describe('MetapprogFunctionBuilder', () => {
       }),
     );
 
-    const result = await new MetaprogFunctionBuilder(
-      'Divide two numbers that throws a custom error for division by zero',
-      { model, cacheHandler },
-    ).build();
+    const func = meta`Divide two numbers that throws a custom error for division by zero`;
+
+    const result = await func.build();
 
     expect(result).toBeDefined();
 
@@ -131,10 +132,7 @@ describe('MetapprogFunctionBuilder', () => {
         }),
       );
 
-    const func = await new MetaprogFunctionBuilder('Add two numbers', {
-      model,
-      cacheHandler,
-    })
+    const func = await meta`Add two numbers`
       .test((f) => f('1', '2') === 3)
       .test((f) => f('2', '3') === 5)
       .build();
@@ -160,11 +158,14 @@ describe('MetapprogFunctionBuilder', () => {
       }),
     );
 
-    const func = await new MetaprogFunctionBuilder('Add two numbers', {
-      model,
-      inputSchema,
-      cacheHandler,
-    }).build();
+    const func = await meta`Add two numbers`
+      .input(
+        z.object({
+          a: z.number(),
+          b: z.number(),
+        }),
+      )
+      .build();
 
     expectTypeOf(func).toBeFunction();
     expectTypeOf(func).parameter(0).toEqualTypeOf<{
@@ -174,17 +175,6 @@ describe('MetapprogFunctionBuilder', () => {
   });
 
   it('should allow input schema for multiple inputs', async () => {
-    const inputSchema = [
-      z.object({
-        a: z.number(),
-        b: z.number(),
-      }),
-      z.object({
-        c: z.number(),
-        d: z.number(),
-      }),
-    ] as const;
-
     vi.spyOn(model, 'invoke').mockResolvedValue(
       new ChatMessageChunk({
         content: `export default function add({a, b}: {a: number, b: number}, {c, d}: {c: number, d: number}): number { return a + b + c + d; }`,
@@ -192,11 +182,18 @@ describe('MetapprogFunctionBuilder', () => {
       }),
     );
 
-    const func = await new MetaprogFunctionBuilder('Add four numbers', {
-      model,
-      inputSchema,
-      cacheHandler,
-    }).build();
+    const func = await meta`Add four numbers`
+      .input(
+        z.object({
+          a: z.number(),
+          b: z.number(),
+        }),
+        z.object({
+          c: z.number(),
+          d: z.number(),
+        }),
+      )
+      .build();
 
     expectTypeOf(func).toBeFunction();
     expectTypeOf(func).parameter(0).toEqualTypeOf<{

@@ -8,8 +8,6 @@ export async function retry<T, U>(
     retries?: number;
   } = {},
 ): Promise<T> {
-  console.log('Retrying', fn.toString());
-  console.log('Retries', retries);
   try {
     return await fn();
   } catch (error) {
@@ -23,11 +21,3 @@ export async function retry<T, U>(
     throw error;
   }
 }
-
-export type Narrow<T> = {
-  [K in keyof T]: K extends keyof []
-    ? T[K]
-    : T[K] extends (...args: any[]) => unknown
-      ? T[K]
-      : Narrow<T[K]>;
-};

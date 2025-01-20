@@ -3,7 +3,7 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import path from 'path';
 import { z, type ZodType } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { retry, type Narrow } from './utils.js';
+import { retry } from './utils.js';
 import { FileSystemCacheHandler, type CacheHandler } from './cache.js';
 
 const BASE_PATH = path.join(__dirname, 'metaprog');
@@ -12,27 +12,22 @@ export const DEFAULT_GENERATED_PATH = path.join(BASE_PATH, 'generated');
 
 export const DEFAULT_CACHE_PATH = path.join(BASE_PATH, 'metaprog-cache.json');
 
-type MetaprogFunctionBuilderConfigInput<
-  TInputSchema extends readonly ZodType[],
-  TOutputSchema extends ZodType,
-> = {
+export type MetaprogConfig = {
   model: BaseChatModel;
-  inputSchema?: TInputSchema;
-  outputSchema?: TOutputSchema;
-  cacheHandler?: CacheHandler;
-};
-
-type MetaprogFunctionBuilderConfig<
-  TInputSchema extends readonly ZodType[],
-  TOutputSchema extends ZodType,
-> = {
-  model: BaseChatModel;
-  inputSchema?: TInputSchema;
-  outputSchema?: TOutputSchema;
   cacheHandler: CacheHandler;
 };
 
-export class MetaprogFunctionBuilder<
+export function createMetaprogBuilder(config: MetaprogConfig) {
+  return (prompt: TemplateStringsArray | string, ...args: any[]) =>
+    new MetaprogFunctionBuilder(
+      typeof prompt === 'string'
+        ? prompt
+        : prompt.reduce((acc, str, i) => acc + str + (args[i] || ''), ''),
+      config,
+    );
+}
+
+class MetaprogFunctionBuilder<
   TInputSchema extends readonly ZodType[],
   TOutputSchema extends ZodType,
 > {
@@ -43,11 +38,13 @@ export class MetaprogFunctionBuilder<
       ) => z.infer<TOutputSchema>,
     ) => boolean;
   }[] = [];
-  private config: MetaprogFunctionBuilderConfig<TInputSchema, TOutputSchema>;
+  private config: MetaprogConfig;
+  private inputSchema?: TInputSchema;
+  private outputSchema?: TOutputSchema;
 
   constructor(
     private description: string,
-    config: MetaprogFunctionBuilderConfigInput<TInputSchema, TOutputSchema>,
+    config: MetaprogConfig,
   ) {
     this.config = {
       ...config,
@@ -118,6 +115,22 @@ export class MetaprogFunctionBuilder<
         },
       },
     );
+  }
+
+  public input<TNewInputSchema extends readonly ZodType[]>(
+    ...inputSchema: TNewInputSchema
+  ) {
+    // @ts-expect-error - This is a necessary hack to bypass type system and narrow the input type
+    this.inputSchema = inputSchema;
+    return this as MetaprogFunctionBuilder<TNewInputSchema, TOutputSchema>;
+  }
+
+  public output<TNewOutputSchema extends ZodType>(
+    outputSchema: TNewOutputSchema,
+  ) {
+    // @ts-expect-error - This is a necessary hack to bypass type system and narrow the output type
+    this.outputSchema = outputSchema;
+    return this as MetaprogFunctionBuilder<TInputSchema, TNewOutputSchema>;
   }
 
   public async build() {
@@ -195,7 +208,7 @@ export class MetaprogFunctionBuilder<
         </code-run-result>
 
         ${
-          this.config.inputSchema
+          this.inputSchema
             ? `
           <function-input-schema>
           {functionInputSchema}
@@ -205,7 +218,7 @@ export class MetaprogFunctionBuilder<
         }
 
         ${
-          this.config.outputSchema
+          this.outputSchema
             ? `
           <function-output-schema>
           {functionOutputSchema}
@@ -229,11 +242,11 @@ export class MetaprogFunctionBuilder<
       existingFunctionCode,
       testCodeThatFailed: testCode,
       codeRunResult: JSON.stringify(actualResult),
-      functionInputSchema: this.config.inputSchema
+      functionInputSchema: this.inputSchema
         ?.map((arg) => zodToJsonSchema(arg))
         .join('\n\n'),
-      functionOutputSchema: this.config.outputSchema
-        ? zodToJsonSchema(this.config.outputSchema)
+      functionOutputSchema: this.outputSchema
+        ? zodToJsonSchema(this.outputSchema)
         : undefined,
     });
 
@@ -290,7 +303,7 @@ export class MetaprogFunctionBuilder<
         <functionDescription>{functionDescription}</functionDescription>
 
         ${
-          this.config.inputSchema
+          this.inputSchema
             ? `
           <inputSchema>
           {inputSchema}
@@ -300,7 +313,7 @@ export class MetaprogFunctionBuilder<
         }
 
         ${
-          this.config.outputSchema
+          this.outputSchema
             ? `
           <outputSchema>
           {outputSchema}
@@ -317,11 +330,11 @@ export class MetaprogFunctionBuilder<
     console.log('Generating function');
     const result = await chain.invoke({
       functionDescription: this.description,
-      inputSchema: this.config.inputSchema
+      inputSchema: this.inputSchema
         ?.map((arg) => zodToJsonSchema(arg))
         .join('\n\n'),
-      outputSchema: this.config.outputSchema
-        ? zodToJsonSchema(this.config.outputSchema)
+      outputSchema: this.outputSchema
+        ? zodToJsonSchema(this.outputSchema)
         : undefined,
     });
 

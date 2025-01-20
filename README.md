@@ -93,7 +93,7 @@ yarn add metaprog @langchain/core @langchain/anthropic
 Below is a simple (and extremely overkill) example demonstrating how to generate a function that logs "Hello world!" to the console.
 
 ```typescript
-import { MetaprogFunctionBuilder } from 'metaprog';
+import { createMetaprogBuilder } from 'metaprog';
 import { ChatAnthropic } from '@langchain/anthropic';
 
 const model = new ChatAnthropic({
@@ -101,11 +101,9 @@ const model = new ChatAnthropic({
   apiKey: 'your_api_key_here',
 });
 
-const builder = new MetaprogFunctionBuilder('Console log "Hello world!"', {
-  model,
-});
+const meta = createMetaprogBuilder({ model });
 
-const func = await builder.build();
+const func = await meta`Console log "Hello world!"`.build();
 
 func(); // logs "Hello world!"
 ```
@@ -124,7 +122,7 @@ To further constrain or validate your function's input and output, you can provi
 
 ```typescript
 import { z } from 'zod';
-import { MetaprogFunctionBuilder } from 'metaprog';
+import { createMetaprogBuilder } from 'metaprog';
 import { ChatAnthropic } from '@langchain/anthropic';
 
 const model = new ChatAnthropic({
@@ -132,27 +130,22 @@ const model = new ChatAnthropic({
   apiKey: 'your_api_key_here',
 });
 
+const meta = createMetaprogBuilder({ model });
+
 // Define input/output Zod schemas
-const inputSchema = [
-  z.array(z.array(z.number())).describe('Adjacency matrix'),
-  z.number().describe('Start node'),
-  z.number().describe('End node'),
-];
-const outputSchema = z.number().describe('Shortest path length');
+const pathFinder =
+  await meta`Get shortest path between two nodes on a graph given an adjacency matrix, a start node, and an end node.`
+    .input(
+      z.array(z.array(z.number())).describe('Adjacency matrix'),
+      z.number().describe('Start node'),
+      z.number().describe('End node'),
+    )
+    .output(z.number().describe('Shortest path length'))
+    .build();
 
-const pathFinderBuilder = new MetaprogFunctionBuilder(
-  'Get shortest path between two nodes on a graph given an adjacency matrix, a start node, and an end node.',
-  {
-    model,
-    inputSchema,
-    outputSchema,
-  },
-);
-
-const findPathLength = await pathFinderBuilder.build();
-// ^? (adjacencyMatrix: number[][], startNode: number, endNode: number) => number
-
-findPathLength(
+// The function is strictly typed as:
+// (adjacencyMatrix: number[][], startNode: number, endNode: number) => number
+pathFinder(
   [
     [0, 1, 7],
     [1, 2, 3],
@@ -171,7 +164,7 @@ Metaprog can automatically run a test against the generated function. If the fun
 
 ```typescript
 import { z } from 'zod';
-import { MetaprogFunctionBuilder } from 'metaprog';
+import { createMetaprogBuilder } from 'metaprog';
 import { ChatAnthropic } from '@langchain/anthropic';
 
 const model = new ChatAnthropic({
@@ -179,9 +172,9 @@ const model = new ChatAnthropic({
   apiKey: 'your_api_key_here',
 });
 
-const addStrings = await new MetaprogFunctionBuilder('Add two numbers', {
-  model,
-})
+const meta = createMetaprogBuilder({ model });
+
+const addStrings = await meta`Add two numbers`
   .test((f) => f('1', '2') === 3) // If not passed, retries generation
   .test((f) => f('-5', '15') === 10) // If not passed, retries generation
   .build();
